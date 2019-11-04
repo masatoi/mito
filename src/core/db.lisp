@@ -102,6 +102,9 @@
             (apply #'dbi:execute query binds))
            t))))
 
+(defvar *db-datetime-format*
+  '((:year 4) #\- (:month 2) #\- (:day 2) #\Space (:hour 2) #\: (:min 2) #\: (:sec 2) #\. (:usec 6) :gmt-offset-or-z))
+
 (defgeneric execute-sql (sql &optional binds)
   (:method :before (sql &optional binds)
     (declare (ignore sql binds))
@@ -113,7 +116,11 @@
     (declare (ignore binds))
     (with-quote-char
       (multiple-value-bind (sql binds)
-          (sxql:yield sql)
+          (let ((sxql.operator:*timestring-format*
+                  (if (slot-value *connection* '%microsecond-precision)
+                      *db-datetime-format*
+                      sxql.operator:*timestring-format*)))
+            (sxql:yield sql))
         (with-trace-sql (apply #'dbi:do-sql *connection* sql binds))))))
 
 (defun array-convert-nulls-to-nils (results-array)
